@@ -1,0 +1,637 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        340,
+        40
+      ],
+      "id": "bbf3a9ec-19b7-4aa7-b447-9f027d19fc06",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const prompt = $('UserInput Webhook').first().json.body.Prompt.toLowerCase();\nconst rows = $input.all().map(item => item.json);\n\nlet matchedPattern = null;\nlet matchedRow = null;\n\nfor (const row of rows) {\n  try {\n    const regex = new RegExp(row.Patterns, \"i\");\n    if (regex.test(prompt)) {\n      matchedPattern = row.Patterns;\n      matchedRow = row.row_number;\n      break;\n    }\n  } catch (err) {\n    console.warn(`Invalid pattern: ${row.Patterns}`);\n  }\n}\n\nreturn [{\n  json: matchedPattern ? {\n    result: \"Malicious\",\n    matchedPattern,\n    matchedRow,\n    prompt\n  } : {\n    result: \"Unknown\",\n    prompt\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        40
+      ],
+      "id": "40c49e33-b69f-47d7-8b5a-776a46acaa1d",
+      "name": "Pattern Matching and Identification"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.result }}",
+                    "rightValue": "Unknown",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "9f5ba7d5-0c93-4c36-b71c-3a5c5865abbb"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d95c12d6-85dc-42b4-a23e-d154c323f775",
+                    "leftValue": "=",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        700,
+        40
+      ],
+      "id": "fb39951f-5f24-4156-87fe-92241c63671d",
+      "name": "Malicious or Unknown"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=YOUR_API_KEY_HERE",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Classify the following prompt as either Safe or Malicious. Respond with only one word: 'Safe' or 'Malicious'.\\n\\nPrompt: {{$json.prompt}}\"\n        }\n      ]\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        -60
+      ],
+      "id": "c7fdf386-1b60-411e-9380-87a7a0e255b2",
+      "name": "Gemini-assisted Prompt Classification"
+    },
+    {
+      "parameters": {
+        "jsCode": "const verdict = $json.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toLowerCase();\nconst prompt = $('Pattern Matching and Identification').first().json.prompt;\n\nreturn [{\n  json: {\n    result: verdict === \"malicious\" ? \"Malicious\" : \"Safe\",\n    source: \"Gemini\",\n    prompt: prompt\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        -60
+      ],
+      "id": "9a454065-25e4-4864-9632-b85258196214",
+      "name": "Parse Gemini Output"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "14qRGGdetgkwNRa7aTdKACTUOrI4rPiDcCuTlFNvaVSQ",
+          "mode": "list",
+          "cachedResultName": "Prompts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14qRGGdetgkwNRa7aTdKACTUOrI4rPiDcCuTlFNvaVSQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14qRGGdetgkwNRa7aTdKACTUOrI4rPiDcCuTlFNvaVSQ/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Prompt": "={{ $json.body.Prompt.toLowerCase() }}"
+          },
+          "matchingColumns": [
+            "Column 1"
+          ],
+          "schema": [
+            {
+              "id": "Prompt",
+              "displayName": "Prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Classification",
+              "displayName": "Classification",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Matched Pattern",
+              "displayName": "Matched Pattern",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "useAppend": true
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        140,
+        200
+      ],
+      "id": "776657f3-d9c4-43e5-8ca0-5b680417f0ce",
+      "name": "PromptLogs",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Dm4wcg1bfl2KP0Rf",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "8f616ec5-db22-4e62-917d-456c246bc1ab",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        60
+      ],
+      "id": "39d786b5-7a2a-403b-a6a8-5c6850d70f31",
+      "name": "UserInput Webhook",
+      "webhookId": "8f616ec5-db22-4e62-917d-456c246bc1ab"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1cfs5nXr1RPhDHbc5-zkPfuqCWl4ZLw5AMJUmN5n5aNc",
+          "mode": "list",
+          "cachedResultName": "ThreatPatterns",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cfs5nXr1RPhDHbc5-zkPfuqCWl4ZLw5AMJUmN5n5aNc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cfs5nXr1RPhDHbc5-zkPfuqCWl4ZLw5AMJUmN5n5aNc/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        140,
+        -100
+      ],
+      "id": "bffc7f9e-cde1-413e-a76d-c830347ee83c",
+      "name": "ThreatPatterns",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Dm4wcg1bfl2KP0Rf",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1cfs5nXr1RPhDHbc5-zkPfuqCWl4ZLw5AMJUmN5n5aNc",
+          "mode": "list",
+          "cachedResultName": "ThreatPatterns",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cfs5nXr1RPhDHbc5-zkPfuqCWl4ZLw5AMJUmN5n5aNc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1461515566,
+          "mode": "list",
+          "cachedResultName": "PendingPatterns",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cfs5nXr1RPhDHbc5-zkPfuqCWl4ZLw5AMJUmN5n5aNc/edit#gid=1461515566"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Needs Review?": "Yes",
+            "Prompt": "={{ $json.prompt }}",
+            "Source": "={{ $json.source }}"
+          },
+          "matchingColumns": [
+            "Prompt"
+          ],
+          "schema": [
+            {
+              "id": "Prompt",
+              "displayName": "Prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Needs Review?",
+              "displayName": "Needs Review?",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1360,
+        40
+      ],
+      "id": "f6a1ed82-0d9b-4897-bd9a-4daf625ec8ef",
+      "name": "PendingReview",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Dm4wcg1bfl2KP0Rf",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "14qRGGdetgkwNRa7aTdKACTUOrI4rPiDcCuTlFNvaVSQ",
+          "mode": "list",
+          "cachedResultName": "Prompts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14qRGGdetgkwNRa7aTdKACTUOrI4rPiDcCuTlFNvaVSQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14qRGGdetgkwNRa7aTdKACTUOrI4rPiDcCuTlFNvaVSQ/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Prompt": "={{ $json.prompt }}",
+            "Source": "={{ $json.source }}",
+            "Classification": "={{ $json.result }}"
+          },
+          "matchingColumns": [
+            "Prompt"
+          ],
+          "schema": [
+            {
+              "id": "Prompt",
+              "displayName": "Prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Classification",
+              "displayName": "Classification",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Matched Pattern",
+              "displayName": "Matched Pattern",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1360,
+        -160
+      ],
+      "id": "134ba09d-3221-46cf-9180-792aa2c64fba",
+      "name": "Update PromptLogs (Gemini)",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Dm4wcg1bfl2KP0Rf",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "14qRGGdetgkwNRa7aTdKACTUOrI4rPiDcCuTlFNvaVSQ",
+          "mode": "list",
+          "cachedResultName": "Prompts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14qRGGdetgkwNRa7aTdKACTUOrI4rPiDcCuTlFNvaVSQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14qRGGdetgkwNRa7aTdKACTUOrI4rPiDcCuTlFNvaVSQ/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Prompt": "={{ $json.prompt }}",
+            "Classification": "={{ $json.result }}",
+            "Matched Pattern": "={{ $json.matchedPattern }}",
+            "Source": "Regex"
+          },
+          "matchingColumns": [
+            "Prompt"
+          ],
+          "schema": [
+            {
+              "id": "Prompt",
+              "displayName": "Prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Classification",
+              "displayName": "Classification",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Matched Pattern",
+              "displayName": "Matched Pattern",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        920,
+        140
+      ],
+      "id": "32b8c82d-eca0-4a34-a73f-709c289cab15",
+      "name": "Update PromptLogs (Regex)",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Dm4wcg1bfl2KP0Rf",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Pattern Matching and Identification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pattern Matching and Identification": {
+      "main": [
+        [
+          {
+            "node": "Malicious or Unknown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Malicious or Unknown": {
+      "main": [
+        [
+          {
+            "node": "Gemini-assisted Prompt Classification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update PromptLogs (Regex)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini-assisted Prompt Classification": {
+      "main": [
+        [
+          {
+            "node": "Parse Gemini Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gemini Output": {
+      "main": [
+        [
+          {
+            "node": "Update PromptLogs (Gemini)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "PendingReview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PromptLogs": {
+      "main": [
+        []
+      ]
+    },
+    "UserInput Webhook": {
+      "main": [
+        [
+          {
+            "node": "PromptLogs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "ThreatPatterns",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "ThreatPatterns": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "93abbedd-8fcd-4f44-9c2d-aa32cf5a969d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1af75dfd5048d5d6e1596dc31f76f46db3d516562d165bdc10040986565ab0f2"
+  },
+  "id": "st3hyvItYpMbLkpR",
+  "tags": []
+}

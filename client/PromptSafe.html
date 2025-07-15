@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PromptSafe - Prompt Classifier</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Roboto', Arial, sans-serif;
+      background: linear-gradient(135deg, #1e293b 0%, #64748b 100%);
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      background: #fff;
+      padding: 2.5rem 2rem;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(30,41,59,0.15);
+      max-width: 400px;
+      width: 100%;
+    }
+    h1 {
+      color: #1e293b;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+    h2 {
+      color: #64748b;
+      font-size: 1.1rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+      font-weight: 400;
+    }
+    label {
+      font-weight: 700;
+      color: #334155;
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    textarea {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 0.75rem;
+      font-size: 1rem;
+      resize: vertical;
+      margin-bottom: 1.5rem;
+      background: #f8fafc;
+      transition: border-color 0.2s;
+    }
+    textarea:focus {
+      border-color: #64748b;
+      outline: none;
+    }
+    .submit-btn {
+      width: 100%;
+      background: linear-gradient(90deg, #1e293b 0%, #64748b 100%);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .submit-btn:hover {
+      background: linear-gradient(90deg, #64748b 0%, #1e293b 100%);
+    }
+    .branding {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .branding img {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 0.5rem;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+      color: #64748b;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="branding">
+      <img src="https://img.icons8.com/fluency/48/000000/security-checked.png" alt="PromptSafe Logo" />
+      <h1>PromptSafe</h1>
+    </div>
+    <h2>Prompt Classifier & Filter</h2>
+    <form id="promptForm" autocomplete="off">
+      <label for="Prompt">Enter your prompt:</label>
+      <textarea id="Prompt" name="Prompt" rows="5" required placeholder="Paste your prompt here..."></textarea>
+      <button type="submit" class="submit-btn">Submit for Review</button>
+    </form>
+    <div id="responseBox" style="display:none; margin-top:1.5rem; padding:1rem; border-radius:8px; background:#f1f5f9; color:#334155; box-shadow:0 2px 8px rgba(30,41,59,0.07); font-size:1rem;"></div>
+    <div class="footer">
+      Powered by n8n &mdash; CyberSec Project 00
+    </div>
+    <script>
+      const form = document.getElementById('promptForm');
+      const responseBox = document.getElementById('responseBox');
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        responseBox.style.display = 'none';
+        responseBox.textContent = '';
+        const prompt = document.getElementById('Prompt').value;
+        form.querySelector('.submit-btn').disabled = true;
+        form.querySelector('.submit-btn').textContent = 'Submitting...';
+        try {
+          const res = await fetch('YOUR_WEBHOOK_URL', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ Prompt: prompt })
+          });
+          const data = await res.json();
+          if (data.safe) {
+            responseBox.style.display = 'block';
+            responseBox.innerHTML = `<strong>LLM Response:</strong><br>${data.llm_response}`;
+          } else {
+            responseBox.style.display = 'block';
+            responseBox.innerHTML = `<strong>Prompt flagged as unsafe.</strong><br>${data.message || 'Please revise your prompt.'}`;
+          }
+        } catch (err) {
+          responseBox.style.display = 'block';
+          responseBox.innerHTML = `<strong>Error:</strong> Could not connect to server.`;
+        } finally {
+          form.querySelector('.submit-btn').disabled = false;
+          form.querySelector('.submit-btn').textContent = 'Submit for Review';
+        }
+      });
+    </script>
+  </div>
+</body>
+</html>
